@@ -2,34 +2,21 @@
 
 namespace Rocks;
 
-
 use Exception;
 use PDO;
-use Redis;
+use PDOException;
 
 class Database
 {
     private PDO $conn;
-    private $temp = null;
 
-    /**
-     * Veritabanlarını ayarlamak için host, user, name, pass argümanlarını kullanabilirsiniz.
-     * @param array $mysqlConParameters
-     * @throws RocksException
-     */
-    function __construct(
-        private array $mysqlConParameters
-    ){
-        if(count(array_keys($this->mysqlConParameters)) !== 4)
-            throw new RocksException("Yeterli parametre yok.", code: 1);
-
+    function __construct(){
         try{
-            $this->conn = new PDO("mysql:host={$this->mysqlConParameters["host"]};dbname={$this->mysqlConParameters["name"]};charset=utf8;",
-                (isset($this->mysqlConParameters["user"])) ? $this->mysqlConParameters["user"] : $this->mysqlConParameters["username"],
-                (isset($this->mysqlConParameters["pass"])) ? $this->mysqlConParameters["pass"] : $this->mysqlConParameters["password"]);
-
-        } catch (Exception $ex){
-            var_dump($ex);
+            $this->conn = new PDO("mysql:host={$_ENV["DB_HOST"]}:{$_ENV['DB_PORT']};dbname={$_ENV["DB_NAME"]};charset=utf8;",
+                $_ENV["DB_USERNAME"],
+                $_ENV["DB_PASSWORD"]
+            );
+        } catch (PDOException){
             return false;
         }
         return true;
@@ -50,7 +37,7 @@ class Database
     }
 
     public function insert(string $table,array $data) : bool {
-
+        // TODO: Create insert function
     }
 
 }

@@ -1,0 +1,10 @@
+{
+    "require": {
+        "phpunit/phpunit": "^9.5",
+        "vlucas/phpdotenv": "^5.4",
+      "ext-pdo": "*"
+    },
+    "autoload": {
+      "classmap": ["lib"]
+    }
+}

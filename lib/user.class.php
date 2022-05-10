@@ -2,10 +2,39 @@
 
 namespace Rocks;
 
-require_once __DIR__."/database.class.php";
+require_once __DIR__ . "/database.class.php";
 
 use Exception;
-use Rocks\Database;
+
+enum Authority: int
+{
+    case Admin = 1;
+    case User = 0;
+
+    function label(): string
+    {
+        return match ($this) {
+            static::Admin => 'Administrator',
+            static::User => 'User'
+        };
+    }
+}
+
+enum AccountStatus: int
+{
+    case Verified = 1;
+    case NotVerified = 0;
+    case Banned = 2;
+
+    function label(): string
+    {
+        return match ($this) {
+            static::Verified => 'Account Verified',
+            static::NotVerified => 'Account Not Verified',
+            static::Banned => 'Account Banned',
+        };
+    }
+}
 
 class User
 {
@@ -14,11 +43,11 @@ class User
      * @throws RocksException
      */
     function __construct(
-        private Database $db
+        private readonly Database $db
     )
     {
-        if(!$this->db->checkConnection())
-            throw new RocksException('bağlantılar kurulmamış', code: 3);
+        if (!$this->db->checkConnection())
+            throw new RocksException('Veritabanı bağlantısı kurulmamış.', code: 3);
     }
 
     /**
@@ -26,9 +55,9 @@ class User
      * @param $password
      * @return bool
      */
-    function auth($username, $password) : bool
+    function auth($username, $password): bool
     {
-        $user = $this->db->where("_users","username", $username);
+        $user = $this->db->where("_users", "username", $username);
         if (password_verify($password, $user["password"])) {
             session_regenerate_id();
             $_SESSION['time'] = time();
@@ -36,7 +65,7 @@ class User
             $_SESSION['user'] = $user["username"];
             $_SESSION['auth'] = $user["auth_google"];
             $_SESSION['auth_code'] = $user["auth_code"];
-            if($user['status'] == 1):
+            if ($user['status'] == 1):
                 return true;
             else:
                 return false;
@@ -47,32 +76,44 @@ class User
     }
 
     /**
-     * @param array $data
-     * @return bool
-     * @throws RocksException
+     * Returns end user IP Address
+     * @return string
      */
-    function create(array $data) : bool{
-        $d = [
-            "username" => $data["username"],
-            "authority" => (!isset($data["authority"])) ? "0" : $data["authority"],
-            "status" => (!isset($data["status"])) ? "0" : $data["status"],
-            "ip_address" => (!isset($data["ip_address"])) ? "" : $data["ip_address"],
-            "password" => password_hash($data["pass"], PASSWORD_BCRYPT, array("cost" => 16)),
-            "email" => $data["email"],
-            "tel_no" => (!isset($data["ip_address"])) ? "" : $data["ip_address"],
-            "ref" => (!isset($data["ref"])) ? "" : $data["ref"],
-            "reg_time" => iconv('latin5', 'utf-8', strftime('%d %B %Y')),
-            "reg_ip_address" => (!isset($data["ip_address"])) ? "" : $data["ip_address"],
-            "name_surname" => $data["name_surname"],
-            "auth_google" => rand("112121", "999999"),
-            "auth_code" => $this->generateRandomSecret()
-        ];
-        return $this->db->insert("_users", $d);
+    function getUserIPAddress(): string
+    {
+        if (!empty($_SERVER['HTTP_CLIENT_IP']))
+            $ip = $_SERVER['HTTP_CLIENT_IP'];
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
+            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        else
+            $ip = $_SERVER['REMOTE_ADDR'];
+        return (string)$ip;
     }
 
     /**
+     * @param array $data
+     * @param Authority $authority
+     * @param AccountStatus $status
+     * @return bool
      * @throws RocksException
+     */
+    function create(array $data, Authority $authority, AccountStatus $status): bool
+    {
+        return $this->db->insert("_users", [
+            ...$data,
+            "authority" => $authority->value,
+            "status" => $status->value,
+            "reg_time" => date("Y-m-d H:i:s"),
+            "reg_ip_address" => $this->getUserIPAddress(),
+            "auth_google" => rand("112121", "999999"),
+            "auth_code" => $this->generateRandomSecret()
+        ]);
+    }
+
+    /**
+     * @return string
      * @throws Exception
+     * @throws RocksException
      */
     public function generateRandomSecret($secretLength = 16): string
     {

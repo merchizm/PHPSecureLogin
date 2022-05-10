@@ -1,1 +1,7 @@
 .idea/
+vendor
+.env
+phpunit.xml
+.env
+.DS_Store
+phpunit.xml
