@@ -6,10 +6,15 @@
 >
     <testsuites>
         <testsuite name="Unit">
-            <directory suffix="Test.php">./tests/User</directory>
+            <directory suffix="Test.php">./tests/UserClass</directory>
         </testsuite>
         <testsuite name="Unit">
-            <directory suffix="Test.php">./tests/Database</directory>
+            <directory suffix="Test.php">./tests/DatabaseClass</directory>
+        </testsuite>
+        <testsuite name="Unit">
+            <file>./tests/AuthenticatorClass/GenerateRandomSecretTest.php</file>
+            <file>./tests/AuthenticatorClass/Get2FACodeTest.php</file>
+            <file>./tests/AuthenticatorClass/VerifyCodeTest.php</file>
         </testsuite>
     </testsuites>
     <php>

@@ -14,8 +14,8 @@ enum Authority: int
     function label(): string
     {
         return match ($this) {
-            static::Admin => 'Administrator',
-            static::User => 'User'
+            Authority::Admin => 'Administrator',
+            Authority::User => 'User'
         };
     }
 }
@@ -29,9 +29,9 @@ enum AccountStatus: int
     function label(): string
     {
         return match ($this) {
-            static::Verified => 'Account Verified',
-            static::NotVerified => 'Account Not Verified',
-            static::Banned => 'Account Banned',
+            AccountStatus::Verified => 'Account Verified',
+            AccountStatus::NotVerified => 'Account Not Verified',
+            AccountStatus::Banned => 'Account Banned',
         };
     }
 }
@@ -47,10 +47,11 @@ class User
     )
     {
         if (!$this->db->checkConnection())
-            throw new RocksException('Veritabanı bağlantısı kurulmamış.', code: 3);
+            throw new RocksException('Database connection not established.', code: 3);
     }
 
     /**
+     * Authenticate the user.
      * @param $username
      * @param $password
      * @return bool
@@ -61,18 +62,30 @@ class User
         if (password_verify($password, $user["password"])) {
             session_regenerate_id();
             $_SESSION['time'] = time();
-            $this->user = $user["username"];
-            $_SESSION['user'] = $user["username"];
-            $_SESSION['auth'] = $user["auth_google"];
-            $_SESSION['auth_code'] = $user["auth_code"];
-            if ($user['status'] == 1):
-                return true;
-            else:
-                return false;
-            endif;
+            $_SESSION['temp_user'] = $user["username"];
+            $_SESSION['temp_code'] = $user["2fa_auth_code"];
+            return true;
         } else {
             return false;
         }
+    }
+
+    /**
+     * Destroy the user session.
+     * @return bool
+     */
+    function logout() : bool
+    {
+        return session_destroy();
+    }
+
+    function login(){
+        $user = $_SESSION['temp_user'];
+    }
+
+    function checkAuth() : bool
+    {
+
     }
 
     /**
@@ -91,6 +104,7 @@ class User
     }
 
     /**
+     * Create a user.
      * @param array $data
      * @param Authority $authority
      * @param AccountStatus $status
@@ -101,49 +115,12 @@ class User
     {
         return $this->db->insert("_users", [
             ...$data,
+            "registry_date" => date("Y-m-d H:i:s"),
+            "registry_ip_address" => $this->getUserIPAddress(),
+            "2fa_auth_code" => $this->generateRandomSecret(),
+            "2fa_backup_code" => rand("112121", "999999"),
             "authority" => $authority->value,
             "status" => $status->value,
-            "reg_time" => date("Y-m-d H:i:s"),
-            "reg_ip_address" => $this->getUserIPAddress(),
-            "auth_google" => rand("112121", "999999"),
-            "auth_code" => $this->generateRandomSecret()
         ]);
-    }
-
-    /**
-     * @return string
-     * @throws Exception
-     * @throws RocksException
-     */
-    public function generateRandomSecret($secretLength = 16): string
-    {
-        $secret = '';
-        $validChars = array(
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-            'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-            'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
-            'Y', 'Z', '2', '3', '4', '5', '6', '7',
-            '=',
-        );
-
-        if ($secretLength < 16 || $secretLength > 128)
-            throw new RocksException('Bad secret length');
-
-        $random = false;
-        if (function_exists('random_bytes')):
-            $random = random_bytes($secretLength);
-        elseif (function_exists('openssl_random_pseudo_bytes')):
-            $random = openssl_random_pseudo_bytes($secretLength, $cryptoStrong);
-            if (!$cryptoStrong)
-                $random = false;
-        endif;
-        if ($random !== false) {
-            for ($i = 0; $i < $secretLength; ++$i) {
-                $secret .= $validChars[ord($random[$i]) & 31];
-            }
-        } else
-            throw new RocksException('Cannot create secure random secret due to source unavailability');
-
-        return $secret;
     }
 }

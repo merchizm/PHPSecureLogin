@@ -5,3 +5,4 @@ phpunit.xml
 .env
 .DS_Store
 phpunit.xml
+.phpunit.result.cache

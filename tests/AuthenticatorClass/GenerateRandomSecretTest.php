@@ -1,20 +1,18 @@
 <?php
 
-namespace UserClass;
+namespace AuthenticatorClass;
 
+use Rocks\Authenticator;
 use PHPUnit\Framework\TestCase;
-use Rocks\Database;
-use Rocks\User;
 
 class GenerateRandomSecretTest extends TestCase
 {
 
-    private User|null $user;
+    private Authenticator|null $auth;
 
     protected function setUp(): void
     {
-        $argMock = $this->createMock(Database::class);
-        $this->user = new User($argMock);
+        $this->auth = new Authenticator();
     }
 
     public function testGenerateRandomSecret()
@@ -22,7 +20,7 @@ class GenerateRandomSecretTest extends TestCase
         if(function_exists('random_bytes') === false && function_exists('openssl_random_pseudo_bytes') === false)
             $this->fail('random_bytes or openssl_random_pseudo_bytes function doesn\'t exists.');
 
-        $this->assertIsString($this->user->generateRandomSecret());
+        $this->assertIsString($this->auth->generate_random_secret());
     }
 
     /**
@@ -30,11 +28,11 @@ class GenerateRandomSecretTest extends TestCase
      */
     public function testGenerateRandomSecretLength()
     {
-        $this->assertEquals(16, strlen($this->user->generateRandomSecret()));
+        $this->assertEquals(128, strlen($this->auth->generate_random_secret()));
     }
 
     protected function tearDown(): void
     {
-        $this->user = null;
+        $this->auth = null;
     }
 }
