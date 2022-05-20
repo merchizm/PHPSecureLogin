@@ -7,15 +7,14 @@ use Exception;
 class Authenticator
 {
 
-    protected int $length = 6;
-    private array $valid_chars = [
+    const valid_chars = [
         'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
         'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
         'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
         'Y', 'Z', '2', '3', '4', '5', '6', '7',
         '=',
     ];
-
+    protected int $length = 6;
 
     /**
      * Generates a random secret key of specified length.
@@ -24,7 +23,7 @@ class Authenticator
      * @throws RocksException
      * @throws Exception
      */
-    public function generate_random_secret(int $secretLength = 128): string
+    public static function generate_random_secret(int $secretLength = 128): string
     {
         $secret = '';
         if ($secretLength < 16 || $secretLength > 128)
@@ -40,7 +39,7 @@ class Authenticator
         endif;
         if ($random !== false) {
             for ($i = 0; $i < $secretLength; ++$i) {
-                $secret .= $this->valid_chars[ord($random[$i]) & 31];
+                $secret .= static::valid_chars[ord($random[$i]) & 31];
             }
         } else
             throw new RocksException('Cannot create secure random secret due to source unavailability');
@@ -89,7 +88,15 @@ class Authenticator
         return 'https://chart.googleapis.com/chart?chs='.$width.'x'.$height.'&chld='.$level.'|0&cht=qr&chl='.$urlencoded;
     }
 
-    public function verify_code($secret, $code, $discrepancy = 1, $currentTimeSlice = null): bool
+    /**
+     * Validate 2FA Code
+     * @param $secret int Secret Code
+     * @param $code int 2FA Code
+     * @param $discrepancy int Discrepancy
+     * @param $currentTimeSlice
+     * @return bool
+     */
+    public function verify_code(int $secret, int $code, int $discrepancy = 1, $currentTimeSlice = null): bool
     {
         if ($currentTimeSlice === null) {
             $currentTimeSlice = floor(time() / 30);

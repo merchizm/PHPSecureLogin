@@ -5,6 +5,7 @@ namespace Rocks;
 require_once __DIR__ . "/database.class.php";
 
 use Exception;
+use Rocks\Authenticator;
 
 enum Authority: int
 {
@@ -83,16 +84,16 @@ class User
         $user = $_SESSION['temp_user'];
     }
 
-    function checkAuth() : bool
+    function check_auth_code() : bool
     {
-
+        return false;
     }
 
     /**
      * Returns end user IP Address
      * @return string
      */
-    function getUserIPAddress(): string
+    function get_user_ip_address(): string
     {
         if (!empty($_SERVER['HTTP_CLIENT_IP']))
             $ip = $_SERVER['HTTP_CLIENT_IP'];
@@ -116,8 +117,8 @@ class User
         return $this->db->insert("_users", [
             ...$data,
             "registry_date" => date("Y-m-d H:i:s"),
-            "registry_ip_address" => $this->getUserIPAddress(),
-            "2fa_auth_code" => $this->generateRandomSecret(),
+            "registry_ip_address" => $this->get_user_ip_address(),
+            "2fa_auth_code" => Authenticator::generate_random_secret(),
             "2fa_backup_code" => rand("112121", "999999"),
             "authority" => $authority->value,
             "status" => $status->value,
