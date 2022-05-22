@@ -17,7 +17,7 @@ class VerifyCodeTest extends TestCase
 
     public function testVerify_code()
     {
-        $secret = $this->auth->generate_random_secret();
+        $secret = Authenticator::generate_random_secret();
         $this->assertTrue($this->auth->verify_code($secret, $this->auth->get_code($secret)));
     }
 }

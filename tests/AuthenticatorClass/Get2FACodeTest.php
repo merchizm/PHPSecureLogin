@@ -14,7 +14,7 @@ class Get2FACodeTest extends TestCase
     protected function setUp(): void
     {
         $this->auth = new Authenticator();
-        $this->code = $this->auth->get_code($this->auth->generate_random_secret());
+        $this->code = $this->auth->get_code(Authenticator::generate_random_secret());
     }
 
     public function test2FaCodeGenerate(){
@@ -34,7 +34,7 @@ class Get2FACodeTest extends TestCase
      * @depends test2FACodeLength
      */
     public function test2FACodeChange(){
-        $secret = $this->auth->generate_random_secret();
+        $secret = Authenticator::generate_random_secret();
         $code = $this->auth->get_code($secret);
         sleep(30);
         $this->assertFalse($code === $this->auth->get_code($secret), 'There was no change on 2FA Code.');

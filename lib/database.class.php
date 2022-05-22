@@ -16,7 +16,7 @@ class Database
     private PDO $conn;
 
     /**
-     * Authentication System Table Queries
+     * Authentication System Required Table Queries
      * @var array|string[]
      */
     private array $table_queries = [
@@ -59,7 +59,7 @@ class Database
     }
 
     /**
-     * A method to get pdo object or create it in case needed
+     * A method to get pdo object in case needed
      *
      * @return PDO
      */
@@ -76,7 +76,7 @@ class Database
     {
         $stmt = $this->conn->prepare('SELECT count(*) AS TOTAL_NUMBER_OF_TABLES FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?;');
         $stmt->execute([$_ENV['DB_DATABASE']]);
-        if($stmt->fetch()['TOTAL_NUMBER_OF_TABLES']){
+        if($stmt->fetch()['TOTAL_NUMBER_OF_TABLES'] === 0){
             $this->conn->beginTransaction();
             try{
                 foreach ($this->table_queries as $table_query) {
@@ -126,6 +126,7 @@ class Database
     }
 
     /**
+     *
      * @param string $table
      * @param array $tableData
      * @return bool
@@ -145,7 +146,7 @@ class Database
         $fields = rtrim($fields, ',');
         $values = rtrim($values, ',');
 
-        return !$this->conn->exec(sprintf('INSERT INTO '. $table .'(%s) VALUES(%s)',[$fields, $values])) === false;
+        return !$this->conn->exec(sprintf('INSERT INTO %s (%s) VALUES(%s)', $table ,$fields, $values)) === false;
     }
 
 }

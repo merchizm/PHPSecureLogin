@@ -6,9 +6,6 @@
 >
     <testsuites>
         <testsuite name="Unit">
-            <directory suffix="Test.php">./tests/UserClass</directory>
-        </testsuite>
-        <testsuite name="Unit">
             <directory suffix="Test.php">./tests/DatabaseClass</directory>
         </testsuite>
         <testsuite name="Unit">

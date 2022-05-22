@@ -90,13 +90,13 @@ class Authenticator
 
     /**
      * Validate 2FA Code
-     * @param $secret int Secret Code
-     * @param $code int 2FA Code
+     * @param $secret string Secret Code
+     * @param $code string 2FA Code
      * @param $discrepancy int Discrepancy
      * @param $currentTimeSlice
      * @return bool
      */
-    public function verify_code(int $secret, int $code, int $discrepancy = 1, $currentTimeSlice = null): bool
+    public function verify_code(string $secret, string $code, int $discrepancy = 1, $currentTimeSlice = null): bool
     {
         if ($currentTimeSlice === null) {
             $currentTimeSlice = floor(time() / 30);
@@ -134,16 +134,16 @@ class Authenticator
             return '';
         }
         
-        $base32charsFlipped = array_flip($this->valid_chars);
+        $base32charsFlipped = array_flip(static::valid_chars);
 
-        $paddingCharCount = substr_count($secret, $this->valid_chars[32]);
+        $paddingCharCount = substr_count($secret, static::valid_chars[32]);
         $allowedValues = array(6, 4, 3, 1, 0);
         if (!in_array($paddingCharCount, $allowedValues)) {
             return false;
         }
         for ($i = 0; $i < 4; ++$i) {
             if ($paddingCharCount == $allowedValues[$i] &&
-                substr($secret, -($allowedValues[$i])) != str_repeat($this->valid_chars[32], $allowedValues[$i])) {
+                substr($secret, -($allowedValues[$i])) != str_repeat(static::valid_chars[32], $allowedValues[$i])) {
                 return false;
             }
         }
@@ -152,7 +152,7 @@ class Authenticator
         $binaryString = '';
         for ($i = 0; $i < count($secret); $i = $i + 8) {
             $x = '';
-            if (!in_array($secret[$i], $this->valid_chars)) {
+            if (!in_array($secret[$i], static::valid_chars)) {
                 return false;
             }
             for ($j = 0; $j < 8; ++$j) {

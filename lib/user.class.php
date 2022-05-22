@@ -9,8 +9,8 @@ use Rocks\Authenticator;
 
 enum Authority: int
 {
-    case Admin = 1;
-    case User = 0;
+    case Admin = 2;
+    case User = 1;
 
     function label(): string
     {
@@ -24,8 +24,8 @@ enum Authority: int
 enum AccountStatus: int
 {
     case Verified = 1;
-    case NotVerified = 0;
-    case Banned = 2;
+    case NotVerified = 2;
+    case Banned = 3;
 
     function label(): string
     {
