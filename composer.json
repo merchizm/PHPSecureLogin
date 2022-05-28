@@ -3,7 +3,9 @@
     "phpunit/phpunit": "^9.5",
     "vlucas/phpdotenv": "^5.4",
     "ext-pdo": "*",
-    "friendsofphp/php-cs-fixer": "^3.8"
+    "friendsofphp/php-cs-fixer": "^3.8",
+    "ext-redis": "*",
+    "ext-curl": "*"
   },
   "autoload": {
     "classmap": [

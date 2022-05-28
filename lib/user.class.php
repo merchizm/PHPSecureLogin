@@ -4,8 +4,6 @@ namespace Rocks;
 
 require_once __DIR__ . "/database.class.php";
 
-use Rocks\Authenticator;
-
 enum Authority: int
 {
     case Admin = 2;
@@ -34,11 +32,20 @@ enum AccountStatus: int
             AccountStatus::Banned => 'Account Banned',
         };
     }
+
+    function status(): array
+    {
+        return match ($this){
+            AccountStatus::Verified => ['status'=> 'success'],
+            AccountStatus::NotVerified => ['status'=> 'error', 'message' => 'The account has not been verified yet.'],
+            AccountStatus::Banned => ['status'=> 'error', 'message' => 'The account has been banned.'],
+        };
+    }
 }
 
 class User
 {
-    private \Rocks\Authenticator $auth;
+    private Authenticator $auth;
 
     /**
      * @throws RocksException
@@ -54,22 +61,44 @@ class User
 
     /**
      * Authenticate the user and create temporary credentials.
-     * @param $username
-     * @param $password
+     * @param string $username
+     * @param string $password
+     * @param string $h_captcha_response $_POST['h_captcha_response']
      * @return bool
      */
-    public function auth($username, $password): bool
+    public function auth(string $username,string $password, string $h_captcha_response): bool
     {
-        $user = $this->db->where("_users", "username", $username);
-        if (password_verify($password, $user["password"])) {
-            session_regenerate_id();
+        $user = $this->db->where('_users', 'username', $username);
+        if (password_verify($password, $user['password']) && $this->captcha($h_captcha_response)) {
             $_SESSION['time'] = date_create();
-            $_SESSION['temp_user'] = $user["username"];
-            $_SESSION['temp_code'] = $user["2fa_auth_code"];
+            $_SESSION['temp_user'] = $user['username'];
+            $_SESSION['temp_code'] = $user['2fa_auth_code'];
             return true;
         } else {
             return false;
         }
+    }
+
+    /**
+     * Check captcha
+     * @param $response string hCaptcha Response
+     * @return bool
+     */
+    private function captcha(string $response): bool
+    {
+        $verify = curl_init();
+        curl_setopt($verify, CURLOPT_URL, 'https://hcaptcha.com/siteverify');
+        curl_setopt($verify, CURLOPT_POST, true);
+        curl_setopt($verify, CURLOPT_POSTFIELDS, http_build_query([
+            'secret' => $_ENV['HCAPTCHA_SECRET_CODE'],
+            'response' => $response
+        ]));
+        curl_setopt($verify, CURLOPT_RETURNTRANSFER, true);
+        $responseData = json_decode(curl_exec($verify));
+        if($responseData->success)
+            return true;
+        else
+            return false;
     }
 
     /**
@@ -84,10 +113,10 @@ class User
     /**
      * Check 2FA code and log in.
      * @param $code
-     * @param $remember
+     * @param bool $remember
      * @return bool|string
      */
-    public function check_auth_code_and_login($code, $remember): bool|string
+    public function check_auth_code_and_login($code, bool $remember): bool|string
     {
         if($this->auth->verify_code($_SESSION['temp_code'], $code)){
             $date_diff = date_diff($_SESSION['time'], date_create());
@@ -96,33 +125,54 @@ class User
             $minutes += $date_diff->i;
             if($minutes < 5){
                 $username = $_SESSION['temp_user'];
-                session_regenerate_id();
-                $_SESSION['user'] = $username;
-                $_SESSION['logged_in'] = true;
-                $_SESSION['time'] = date_create();
-                if($remember)
-                    $this->remember($username);
-                return json_encode([
-                    'status' => 'success',
-                    'message' => 'You\'re successfully logged in.'
-                ]);
+                if($this->check_status($username)['status'] === 'success'){
+                    session_regenerate_id(true);
+                    $_SESSION['user'] = $username;
+                    $_SESSION['logged_in'] = true;
+                    $_SESSION['time'] = date_create();
+                    if($remember)
+                        $this->remember();
+                    return json_encode([
+                        'status' => 'success',
+                        'message' => 'You\'re successfully logged in.'
+                    ]);
+                }else{
+                    session_destroy();
+                    return json_encode($this->check_status($username));
+                }
             }else{
+                session_destroy();
                 return json_encode([
                     'status' => 'error',
-                    'message' => 'Your session has expired, please refresh the page and try again.'
+                    'message' => 'Your session has expired, please try logging in again.',
+                    'action' => 'reload_or_href'
                 ]);
             }
         } else {
             return json_encode([
                 'status' => 'error',
-                'message' => 'Your credentials didn\'t match. Please check your username and password.'
+                'message' => 'You entered the wrong two-factor verification code. Please check and try again.'
             ]);
         }
     }
 
-    private function remember($username)
+    /**
+     * Check Account Status
+     * @param $username
+     * @return array
+     */
+    private function check_status($username) : array
     {
-        // TODO: make this ;)
+        $statement = $this->db->where('_users', 'username', $username, null, 'status+0 AS status');
+        return AccountStatus::from($statement['status'])->status();
+    }
+
+    /**
+     * Remember credentials for 1 week
+     */
+    private function remember(): void
+    {
+        $this->db->set_expire('PHPREDIS_SESSION:'.session_id(), (86400 * 7)); // 86400 = 1 day
     }
 
     /**
@@ -152,12 +202,12 @@ class User
     {
         return $this->db->insert("_users", [
             ...$data,
-            "registry_date" => date("Y-m-d H:i:s"),
-            "registry_ip_address" => $this->get_ip_address(),
-            "2fa_auth_code" => Authenticator::generate_random_secret(),
-            "2fa_backup_code" => rand("112121", "999999"),
-            "authority" => $authority->value,
-            "status" => $status->value,
+            'registry_date' => date('Y-m-d H:i:s'),
+            'registry_ip_address' => $this->get_ip_address(),
+            '2fa_auth_code' => Authenticator::generate_random_secret(),
+            '2fa_backup_code' => rand(112121, 999999),
+            'authority' => $authority->value,
+            'status' => $status->value,
         ]);
     }
 }

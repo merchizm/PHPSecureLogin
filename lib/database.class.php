@@ -6,6 +6,7 @@ use DateTime;
 use Exception;
 use PDO;
 use PDOException;
+use Redis;
 
 class Database
 {
@@ -14,6 +15,13 @@ class Database
      * @var PDO
      */
     private PDO $conn;
+
+
+    /**
+     * Redis Instance
+     * @var Redis
+     */
+    private Redis $redis;
 
     /**
      * Authentication System Required Table Queries
@@ -43,6 +51,7 @@ class Database
 
     function __construct(private readonly bool $create_db = false){
         try{
+            // PDO Mysql Connection
             $this->conn = new PDO("mysql:host={$_ENV["DB_HOST"]}:{$_ENV['DB_PORT']};dbname={$_ENV["DB_DATABASE"]};charset=utf8;",
                 $_ENV["DB_USERNAME"],
                 $_ENV["DB_PASSWORD"]
@@ -52,7 +61,24 @@ class Database
             $this->conn->setAttribute(PDO::ATTR_AUTOCOMMIT, 1); // to make commit automatic.
             if($this->create_db)
                 $this->check_db();
-        } catch (PDOException){
+
+            // Redis Connection
+
+            $this->redis = new Redis();
+            $this->redis->connect($_ENV['REDIS_HOST'], $_ENV['REDIS_PORT'], $_ENV['REDIS_CONNECT_TIMEOUT'], NULL ,100);
+
+            if(!empty($_ENV['REDIS_PASS'])){
+                if(empty($_ENV['REDIS_USERNAME']))
+                    $this->redis->auth($_ENV['REDIS_PASS']);
+                else
+                    $this->redis->auth(['user' => $_ENV['REDIS_USERNAME'], 'pass' => $_ENV['REDIS_PASS']]);
+            }else
+                return false;
+
+            if($this->redis->ping() !== 'PONG')
+                return false;
+
+        } catch (Exception){
             return false;
         }
         return true;
@@ -66,6 +92,56 @@ class Database
     public function pdo(): PDO
     {
         return $this->conn;
+    }
+
+    /**
+     * A method to get redis object in case needed
+     *
+     * @return Redis
+     */
+    public function redis(): Redis
+    {
+        return $this->redis;
+    }
+
+    /**
+     * Set the data in redis string
+     * @param $key
+     * @param $value
+     * @param int|null $expireInSec
+     * @return bool|Redis
+     */
+    public function set_key($key, $value, int $expireInSec = null): bool|Redis
+    {
+        $set = $this->redis->set($key, $value);
+        if($set !== false && $expireInSec !== null)
+            $this->redis->expire($key, $expireInSec);
+        return $set;
+    }
+
+    /**
+     * Get the value from redis key
+     * @param $key
+     * @return false|mixed|Redis|string
+     */
+    public function get_value($key): mixed
+    {
+        return $this->redis->get($key);
+    }
+
+    /**
+     * Find all keys matching the given pattern
+     * @param $prefix
+     * @return array|Redis
+     */
+    public function get_keys($prefix = null): array|Redis
+    {
+        return $this->redis->keys(($prefix === null) ? '*' : $prefix.'*');
+    }
+
+    public function set_expire($key, $time): bool|Redis
+    {
+        return $this->redis->expire($key, $time);
     }
 
     /**
@@ -116,17 +192,18 @@ class Database
      * @param string $column
      * @param string $query
      * @param int $limit
+     * @param string $selected_columns
      * @return bool|array
      */
-    public function where(string $table, string $column, string $query, int $limit = 0): bool|array
+    public function where(string $table, string $column, string $query, int $limit = 0, string $selected_columns = '*'): bool|array
     {
-        $statement = $this->conn->prepare("SELECT * FROM ? WHERE ? = ? ".($limit > 0) ? " LIMIT $limit;" : ";");
-        $statement->execute([$table, $column, $query]);
-        return $statement->fetchAll();
+        $statement = $this->conn->prepare("SELECT ? FROM ? WHERE ? = ? ".($limit > 0) ? " LIMIT $limit;" : ";");
+        $statement->execute([$selected_columns, $table, $column, $query]);
+        return $statement->fetch();
     }
 
     /**
-     *
+     * Insert data to database
      * @param string $table
      * @param array $tableData
      * @return bool
