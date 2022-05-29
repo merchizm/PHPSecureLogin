@@ -226,6 +226,11 @@ class Database
         return !$this->conn->exec(sprintf('INSERT INTO %s (%s) VALUES(%s)', $table ,$fields, $values)) === false;
     }
 
+    public function update(string $table, array $set,array $where) : bool
+    {
+        return !$this->conn->exec(sprintf('UPDATE %s SET %s = %s WHERE %s = %s;', $table, $set[0], $set[1], $where[0], $where[1])) === false;
+    }
+
 }
 
 class RocksException extends Exception{
