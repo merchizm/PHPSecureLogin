@@ -7,6 +7,13 @@ use PHPMailer\PHPMailer\PHPMailer;
 
 class Mailer
 {
+    /**
+     * Send Verification Mail
+     * @param $email
+     * @param $url
+     * @param $username
+     * @return bool|array
+     */
     static public function send_verification($email, $url, $username): bool|array
     {
         $mail = new PHPMailer(true);

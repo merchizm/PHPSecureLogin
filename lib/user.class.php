@@ -58,7 +58,8 @@ class User
      * @throws RocksException
      */
     function __construct(
-        private readonly Database $db
+        private readonly Database $db,
+        private readonly bool $test = false
     )
     {
         $this->auth = new Authenticator();
@@ -73,25 +74,6 @@ class User
             throw new RocksException('Database connection not established.', code: 3);
     }
 
-    /**
-     * Get user by username
-     * @param $username
-     * @return bool|array
-     */
-    public function get_user($username): bool|array
-    {
-        return $this->db->where('_users', 'username', $username);
-    }
-
-    /**
-     * Get user by email
-     * @param $email
-     * @return bool|array
-     */
-    public function get_user_by_email($email) : bool|array
-    {
-        return $this->db->where('_users', 'email', $email);
-    }
 
     /**
      * Authenticate the user and create temporary credentials.
@@ -120,6 +102,8 @@ class User
      */
     private function captcha(string $response): bool
     {
+        if($this->test)
+            return true;
         $verify = curl_init();
         curl_setopt($verify, CURLOPT_URL, 'https://hcaptcha.com/siteverify');
         curl_setopt($verify, CURLOPT_POST, true);
@@ -242,13 +226,64 @@ class User
         ]);
     }
 
-    public function send_verification($username): bool|array
+    /**
+     * Update user.
+     * @param array $data
+     * @param string $username
+     * @return bool
+     */
+    public function update_user(array $data, string $username): bool
+    {
+        return $this->db->update("_users", $data, ['username' => $username]);
+    }
+
+    /**
+     * Delete user.
+     * @param string $username
+     * @return bool
+     */
+    public function delete_user(string $username): bool
+    {
+        return $this->db->remove("_users", ['username' => $username]);
+    }
+
+    /**
+     * Get user by username
+     * @param $username
+     * @return bool|array
+     */
+    public function get_user($username): bool|array
+    {
+        return $this->db->where('_users', 'username', $username);
+    }
+
+    /**
+     * Get user by email
+     * @param $email
+     * @return bool|array
+     */
+    public function get_user_by_email($email) : bool|array
+    {
+        return $this->db->where('_users', 'email', $email);
+    }
+
+    /**
+     * Create JWT token and send verification mail
+     * @param string $username
+     * @return bool|array
+     */
+    public function send_verification(string $username): bool|array
     {
         $email = $this->get_user($username)['email'];
         $secret_key = $this->create_jwt($email);
         return Mailer::send_verification($email, $secret_key, $username);
     }
 
+    /**
+     * Create JWT Token
+     * @param string $email email address to send mail
+     * @return string
+     */
     private function create_jwt(string $email): string
     {
         $app_url = (isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] && $_SERVER["HTTPS"] != "off" ? "https" : "http") . "://" . $_SERVER["SERVER_NAME"];
@@ -270,7 +305,12 @@ class User
         return $token->toString();
     }
 
-    public function check_verification($jwt) : bool
+    /**
+     * Check JWT token
+     * @param string $jwt
+     * @return bool
+     */
+    public function check_verification(string $jwt) : bool
     {
         $token = $this->jwt_configuration->parser()->parse($jwt);
 
@@ -284,6 +324,11 @@ class User
             return false;
     }
 
+    /**
+     * Activate account without condition
+     * @param $email
+     * @return bool
+     */
     private function activate_account($email) : bool
     {
         return $this->db->update('_users', ['status', 1], ['email', $email]);

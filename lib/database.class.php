@@ -139,6 +139,12 @@ class Database
         return $this->redis->keys(($prefix === null) ? '*' : $prefix.'*');
     }
 
+    /**
+     * Set expire date for a Redis key
+     * @param $key
+     * @param $time
+     * @return bool|Redis
+     */
     public function set_expire($key, $time): bool|Redis
     {
         return $this->redis->expire($key, $time);
@@ -226,9 +232,27 @@ class Database
         return !$this->conn->exec(sprintf('INSERT INTO %s (%s) VALUES(%s)', $table ,$fields, $values)) === false;
     }
 
+    /**
+     * Update a row
+     * @param string $table
+     * @param array $set
+     * @param array $where
+     * @return bool
+     */
     public function update(string $table, array $set,array $where) : bool
     {
         return !$this->conn->exec(sprintf('UPDATE %s SET %s = %s WHERE %s = %s;', $table, $set[0], $set[1], $where[0], $where[1])) === false;
+    }
+
+    /**
+     * Delete a row
+     * @param string $string
+     * @param array $array
+     * @return bool
+     */
+    public function remove(string $string, array $array) : bool
+    {
+        return $this->conn->exec(sprintf('DELETE FROM %s WHERE %s = %s;', $string, $array[0], $array[1]));
     }
 
 }

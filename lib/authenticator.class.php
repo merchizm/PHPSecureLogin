@@ -74,8 +74,15 @@ class Authenticator
         return str_pad($value % $modulo, $this->length, '0', STR_PAD_LEFT);
     }
 
-
-    public function get_qr($name, $secret, $title = null, $params = array()): string
+    /**
+     * Generate QR code for 2FA
+     * @param $name
+     * @param $secret
+     * @param $title
+     * @param array $params
+     * @return string
+     */
+    public function get_qr($name, $secret, $title = null, array $params = []): string
     {
         $width = !empty($params['width']) && (int) $params['width'] > 0 ? (int) $params['width'] : 200;
         $height = !empty($params['height']) && (int) $params['height'] > 0 ? (int) $params['height'] : 200;
